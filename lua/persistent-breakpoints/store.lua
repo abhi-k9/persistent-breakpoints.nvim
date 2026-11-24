@@ -65,7 +65,7 @@ local function read(path)
 end
 
 function M.identity(cwd)
-	return vim.fs.normalize(uv.fs_realpath(cwd) or cwd)
+	return vim.fs.normalize(uv.fs_realpath(cwd) or cwd, { expand_env = false })
 end
 
 function M.new(directory, cwd)

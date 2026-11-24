@@ -52,6 +52,15 @@ describe("breakpoint storage", function()
 		local input = { ["C:\\雪 space\\a.cpp"] = { { line = 1 } }, ["\\\\host\\share\\x.py"] = {} }
 		assert.same(input, Store.validate(input))
 	end)
+	it("keeps literal environment references in project directory names distinct", function()
+		local previous = vim.env.PERSIST_BP_PROJECT
+		vim.env.PERSIST_BP_PROJECT = "expanded"
+		local literal = Store.new(dir, root .. "/$PERSIST_BP_PROJECT")
+		local expanded = Store.new(dir, root .. "/expanded")
+		vim.env.PERSIST_BP_PROJECT = previous
+		assert.is_not.equals(expanded.path, literal.path)
+	end)
+
 	it("imports legacy fields without changing the original, including after clear", function()
 		vim.fn.mkdir(dir, "p")
 		local legacy = dir .. "/" .. root:gsub(vim.fn.has("win32") == 1 and "[:/\\]" or "/", "_") .. ".json"
