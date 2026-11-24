@@ -96,6 +96,22 @@ describe("persistent breakpoint lifecycle", function()
 		assert.equals(0, #points(buf))
 		assert.same({}, Store.new(root .. "/store", root).load())
 	end)
+	it("retains live breakpoints when another editor prevents a clear", function()
+		local buf = buffer("keep.cpp")
+		dap.set_breakpoint("x > 0", "5", "x={x}")
+		assert.is_true(api.changed())
+		local other = Store.new(root .. "/store", root)
+		local concurrent = other.load()
+		concurrent[root .. "/other.cpp"] = { { line = 1 } }
+		assert.is_true(other.save(concurrent))
+		assert.is_false(api.clear())
+		local bp = points(buf)[1]
+		assert.equals("x > 0", bp.condition)
+		assert.equals("5", bp.hitCondition)
+		assert.equals("x={x}", bp.logMessage)
+		assert.same(concurrent, other.load())
+	end)
+
 	it("restores files loaded after setup without duplicating session restoration", function()
 		local path = root .. "/late.cpp"
 		local disk = Store.new(root .. "/store", root)

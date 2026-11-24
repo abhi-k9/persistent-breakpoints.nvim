@@ -171,9 +171,14 @@ function M.clear()
 	if not store then
 		M.setup()
 	end
+	local ok, err = store.save({})
+	if not ok then
+		warn(err .. "; clear cancelled")
+		return false
+	end
 	require("dap").clear_breakpoints()
-	data, tracked, dirty = {}, {}, true
-	return M.save()
+	data, tracked, dirty, notices = {}, {}, false, {}
+	return true
 end
 
 -- Explicit reload preserves pending changes; it never silently discards a conflict.
