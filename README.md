@@ -22,7 +22,8 @@ and internal utils/inmemory/config modules are retired.
 
 See [reliability, migration and recovery](doc/reliability.md) before upgrading.
 Original legacy stores are retained, never overwritten. Conflicts require review;
-unsaved memory should be exported before closing. No background polling or tool
+run `:PBExport <file>` in the rejected editor before closing to save its breakpoint
+map to a new JSON file. No background polling or tool
 installation occurs.
 
 Tests use temporary directories and installed dependencies:

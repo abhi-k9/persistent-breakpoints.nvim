@@ -9,6 +9,11 @@ local M = {
 	snapshot = core.snapshot,
 	store_breakpoints = core.store_all,
 }
+function M.export_snapshot(path)
+	local data = core.snapshot()
+	require("persistent-breakpoints.store").export(path, data)
+	vim.notify("Exported breakpoints to " .. path)
+end
 function M.set_conditional_breakpoint()
 	local condition = vim.fn.input("[Condition] > ")
 	if condition == "" then

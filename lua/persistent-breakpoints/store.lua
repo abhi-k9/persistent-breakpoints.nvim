@@ -64,6 +64,28 @@ local function read(path)
 	return value
 end
 
+local function write_all(fd, encoded)
+	local offset = 0
+	while offset < #encoded do
+		local written = assert(uv.fs_write(fd, encoded:sub(offset + 1), offset))
+		assert(written > 0, "short store write")
+		offset = offset + written
+	end
+	assert(uv.fs_fsync(fd))
+end
+
+-- Encode before claiming the name. Only clean up files we created.
+function M.export(path, data)
+	local encoded = vim.json.encode(data)
+	local fd = assert(uv.fs_open(path, "wx", 384))
+	local ok, err = pcall(write_all, fd, encoded)
+	local closed, close_err = uv.fs_close(fd)
+	if not ok or not closed then
+		uv.fs_unlink(path)
+		error(err or close_err)
+	end
+end
+
 function M.identity(cwd)
 	return vim.fs.normalize(uv.fs_realpath(cwd) or cwd, { expand_env = false })
 end
@@ -114,23 +136,20 @@ function M.new(directory, cwd)
 			end
 			assert((uv.fs_lstat(directory) or {}).type == "directory", "store directory must not be a symlink")
 			lock = assert(uv.fs_open(self.path .. ".lock", "wx", 384))
-			assert(read(self.path) == baseline, "store changed in another editor; refusing to overwrite")
+			assert(
+				read(self.path) == baseline,
+				"store changed in another editor. Export with :PBExport <file> before quitting"
+			)
 			if baseline == nil then
 				assert(
 					read(directory .. "/" .. legacy .. ".json") == legacy_baseline,
-					"legacy store changed during migration"
+					"legacy store changed during migration. Export with :PBExport <file> before quitting"
 				)
 			end
 			local opened, path = uv.fs_mkstemp(self.path .. ".tmp-XXXXXX")
 			assert(opened, path)
 			fd, temporary = opened, path
-			local offset = 0
-			while offset < #encoded do
-				local written = assert(uv.fs_write(fd, encoded:sub(offset + 1), offset))
-				assert(written > 0, "short store write")
-				offset = offset + written
-			end
-			assert(uv.fs_fsync(fd))
+			write_all(fd, encoded)
 			local closed, close_err = uv.fs_close(fd)
 			fd = nil
 			assert(closed, close_err)

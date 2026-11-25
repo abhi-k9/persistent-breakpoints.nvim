@@ -123,6 +123,19 @@ describe("breakpoint storage", function()
 			vim.uv[key] = originals[key]
 		end
 	end)
+	it("releases the export filename after a failed flush so recovery can be retried", function()
+		local path = root .. "/backup.json"
+		fault("fs_fsync", function()
+			return nil, "injected flush failure"
+		end)
+		assert.has_error(function()
+			Store.export(path, points)
+		end)
+		assert.is_nil(vim.uv.fs_lstat(path))
+		vim.uv.fs_fsync = originals.fs_fsync
+		Store.export(path, points)
+		assert.same(points, vim.json.decode(vim.fn.readfile(path)[1]))
+	end)
 	it("finishes partial writes before committing", function()
 		assert.same({}, store.load())
 		local write = vim.uv.fs_write

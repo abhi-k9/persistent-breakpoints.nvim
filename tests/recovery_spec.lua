@@ -58,8 +58,20 @@ describe("stale editor recovery", function()
 					{ line = 4, hitCondition = "5" }, { line = 5, logMessage = "x={x}" } },
 				[unloaded] = { { line = 1 } },
 			}, recovered)
+			assert.matches(":PBExport", run(loser, "return vim.fn.execute('messages')"))
+			local export = root .. "/losing editor.json"
+			local function export_to(path)
+				return run(loser, "return (pcall(vim.cmd, ...))", "PBExport " .. vim.fn.fnameescape(path))
+			end
+			assert.is_false(export_to(root .. "/missing/recovery.json"))
+			assert.is_false(export_to(store))
+			assert.is_true(export_to(export))
+			assert.same(recovered, vim.json.decode(vim.fn.readfile(export)[1]))
+			assert.is_false(export_to(export))
+			assert.same(recovered, run(loser, "return (api.snapshot())"))
 			vim.rpcnotify(loser, "nvim_command", "qa!")
 			assert.equals(0, vim.fn.jobwait({ loser }, 5000)[1])
+			assert.same(recovered, vim.json.decode(vim.fn.readfile(export)[1]))
 			assert.same(bytes, vim.fn.readblob(store))
 			assert.same(winning, run(start(), "return (api.snapshot())"))
 		end, debug.traceback)

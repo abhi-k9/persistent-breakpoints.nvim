@@ -127,15 +127,24 @@ storage error. Project names containing literal environment references such as
 inspect the old project's snapshot before moving any breakpoints. Its store may
 also contain breakpoints from the directory with the expanded name.
 
-Before closing with unsaved changes, export them and copy the printed temporary
-file to durable storage:
+In the editor whose save was rejected, run `:PBExport <file>` before quitting.
+Choose a new filename in an existing directory where you keep backups. File
+completion is available, including for paths with spaces.
 
 ```vim
-:lua local s = require("persistent-breakpoints.api").snapshot(); local p = vim.fn.tempname() .. ".breakpoints.json"; assert(vim.fn.writefile({vim.json.encode(s)}, p) == 0); print(p)
+:PBExport /path/to/backups/second\ editor.json
 ```
 
-`snapshot()` returns the map and, as its second value, the owned target filename.
-With all relevant editors closed, review/merge recovery data, then restart.
+Wait for the export confirmation. If the name exists or writing fails, keep the
+editor open and retry with a writable, unused filename. Exporting leaves the
+shared store and the editor's pending changes intact.
+
+The JSON is the file-to-breakpoints map returned by `snapshot()`. It includes
+current sign positions in tracked buffers, their condition, hit count and log
+message fields, and retained entries for unloaded files. The second Lua return
+value is the owned store filename. After closing the relevant editors, compare
+the export with the winning store's `breakpoints` field and reconcile manually.
+
 Corrupt files are not automatically deleted or replaced by empty maps: back up,
 repair JSON or restore a reviewed backup. Deleting versioned files can expose
 older legacy state again; use `<leader>dX` to clear the owned project's state.
@@ -155,8 +164,8 @@ failures, partial writes, symlinks, stale writers and stale locks. Lifecycle tes
 use real DAP signs/setters for mapped prompts/F9, restart-like reinitialization,
 late/session loads, multiple files, renames, switches, clear and adapter notification.
 
-Validation here uses Linux/Neovim 0.12.6. Independent store contexts test concurrency
-interleavings, not a two-process Windows stress test. Native Windows/macOS, network
+Validation here uses Linux/Neovim 0.12.6. The recovery test runs two concurrent
+headless editors and checks the winning store from a fresh third process. Native Windows/macOS, network
 shares, power-cut durability and live debuggees across every adapter are not
 certified. Full process restart and actual auto-session restoration remain useful
 native manual checks. CI gets fast ordinary specs, no new matrix or debugger
